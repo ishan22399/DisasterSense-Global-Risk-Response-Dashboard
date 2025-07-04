@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherKey}&units=metric`;
     const weatherResponse = await fetchAPI(weatherUrl, 'Weather API failed');
 
-    const aqiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${weatherKey}`;
+    const aqiUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=01d5a8a52924551bef6a05ba8b6b8dc9383e331a`;
     const aqiResponse = await fetchAPI(aqiUrl, 'AQI API failed');
 
     const weather = {
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       humidity: weatherResponse.main.humidity,
       description: weatherResponse.weather[0].description,
       icon: weatherResponse.weather[0].icon,
-      aqi: aqiResponse.list[0].main.aqi,
+      aqi: aqiResponse.data.aqi,
     };
 
     // 3. Satellite & Analysis Data (Simulated for now, but can be replaced with real APIs)

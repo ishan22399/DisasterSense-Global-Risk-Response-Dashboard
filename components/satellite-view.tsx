@@ -331,15 +331,17 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
         <CardContent>
             <div ref={searchContainerRef} className="relative max-w-md">
                 <div className="flex items-center space-x-2">
-                    <Input 
-                        id="location-search"
-                        placeholder="Search location..." 
-                        value={searchQuery} 
-                        onChange={handleSearchQueryChange}
-                        onFocus={() => setIsSuggestionsVisible(true)}
-                        className="pr-10"
-                    />
-                    <Search className="absolute right-3 h-5 w-5 text-gray-400" />
+                    <div className="relative flex-grow">
+                        <Input 
+                            id="location-search"
+                            placeholder="Search location..." 
+                            value={searchQuery} 
+                            onChange={handleSearchQueryChange}
+                            onFocus={() => setIsSuggestionsVisible(true)}
+                            className="pr-12"
+                        />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -355,7 +357,7 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
                     </Button>
                 </div>
                 {isSuggestionsVisible && (
-                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg">
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg bg-opacity-95">
                         {isSuggestionsLoading && (
                             <div className="p-3 text-center text-sm text-gray-500 dark:text-gray-400">
                                 Loading suggestions...
