@@ -30,13 +30,24 @@ import { DisasterMap } from "./disaster-map"
 import { RiskChart } from "./risk-chart"
 import { NewsPanel } from "./news-panel"
 import { EmergencyContacts } from "./emergency-contacts"
-import { SatelliteView } from "./satellite-view"
+import dynamic from "next/dynamic"
+
+const SatelliteView = dynamic(() => import("./satellite-view").then((mod) => mod.SatelliteView), { ssr: false })
 import { Footer } from "./footer"
 import { useDisasterData } from "@/hooks/use-disaster-data"
 
 export function DisasterDashboard() {
   const { theme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState("overview")
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        setActiveTab(hash);
+      }
+    }
+  }, []);
   const [alerts, setAlerts] = useState(3)
   const [selectedDisaster, setSelectedDisaster] = useState<any>(null)
   const [isMounted, setIsMounted] = useState(false)

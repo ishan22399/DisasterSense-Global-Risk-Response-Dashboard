@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="https://cdn-icons-png.flaticon.com/128/17235/17235414.png" type="image/png" />
+      </head>
       <body className={`${inter.variable} ${geist.variable} font-sans`}>
         <ThemeProvider 
           attribute="class" 
