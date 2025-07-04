@@ -1,114 +1,149 @@
-# Disaster Dashboard Setup Guide
+# DisasterSense: Global Risk & Response Dashboard
 
-## Overview
-This disaster dashboard uses legitimate APIs to provide real-time disaster data:
+## 🌟 Overview
+DisasterSense is a real-time intelligence platform designed to provide actionable insights and comprehensive monitoring of natural disasters worldwide. Leveraging various data sources, it offers live alerts, predictive analytics, and interactive visualizations to enhance emergency response and disaster preparedness.
 
-## API Keys Required (All Free)
+## ✨ Features
 
-### 1. OpenWeatherMap API (Optional - for weather alerts)
-- Visit: https://openweathermap.org/api
-- Sign up for a free account
-- Get your API key
-- Add to `.env.local`: `NEXT_PUBLIC_OPENWEATHER_API_KEY=your_key_here`
+### Interactive Dashboard
+- **Live Data Updates**: Real-time data refresh with configurable intervals and manual refresh option.
+- **Connection Status**: Visual indicators for API connectivity and data freshness.
+- **Critical Alerts**: Prominent display of high-severity disaster warnings.
+- **Key Metrics**: Overview of active disasters, affected populations, and overall risk levels.
+- **Responsive Design**: Optimized for seamless experience across desktop, tablet, and mobile devices.
 
-### 2. NewsAPI (Optional - for disaster news)
-- Visit: https://newsapi.org/
-- Sign up for a free account (100 requests/day)
-- Get your API key
-- Add to `.env.local`: `NEXT_PUBLIC_NEWS_API_KEY=your_key_here`
+### 🗺️ Live Map
+- **Dynamic Disaster Markers**: Visual representation of disaster locations with severity-based coloring.
+- **Detailed Popups**: Clickable markers reveal comprehensive information about each incident.
+- **Map Layer Selection**: Switch between Street, Satellite, Terrain, and Dark map styles.
+- **Auto-fitting**: Map adjusts to display all active disaster locations.
 
-### 3. USGS Earthquake API (No key required)
-- This is completely free and doesn't require registration
-- Provides real-time earthquake data worldwide
-- Already configured in the app
+### 🛰️ Satellite Intelligence Hub
+- **Location Search**: Search for any location worldwide with intelligent suggestions.
+- **Current Location Detection**: Automatically pinpoint and display data for your current geographical position.
+- **Real-time Local Data**: Fetches current weather conditions and Air Quality Index (AQI) for selected locations.
+- **Damage Assessment (Simulated)**: Visualizes potential impact areas with heatmaps.
+- **Predictive Paths (Simulated)**: Shows potential future trajectories of certain disasters.
+- **Change Detection (Simulated)**: Highlights environmental changes over time.
 
-## Data Sources
+### 📈 Risk Analysis
+- **Regional Risk Breakdown**: Visualizes disaster risk levels by geographical region.
+- **AI Risk Predictions (Simulated)**: Forecasts potential risk trends based on machine learning models.
+- **Disaster Type & Severity Distribution**: Charts illustrating the breakdown of active incidents.
 
-### Real-time Data:
-- **Earthquakes**: USGS Earthquake Hazards Program API
-  - Provides real-time earthquake data globally
-  - Magnitude 4.0+ earthquakes from the last 7 days
-  - Includes location, magnitude, time, and details
+### 📰 News & Alerts
+- **Latest Disaster News**: Aggregates real-time news articles related to natural disasters.
+- **Urgency Indicators**: Highlights critical news with "URGENT" badges.
+- **Source & Time Tracking**: Displays news source and publication time.
 
-### Mock Data (for demonstration):
-- **Wildfires**: Simulated data based on common wildfire locations
-- **Hurricanes**: Simulated data based on hurricane-prone areas
-- **Floods**: Can be extended with real APIs like NOAA
+### 📞 Emergency Contacts
+- **Country-Specific Contacts**: Provides critical emergency numbers and official agency information based on selected or auto-detected country.
+- **Shelter & Resource Availability (Simulated)**: Real-time updates on emergency shelters and resource distribution points.
 
-## Features
+## 🚀 Technologies Used
 
-### Interactive Map
-- **Real Leaflet.js map** with OpenStreetMap tiles
-- **Disaster markers** with severity-based colors
-- **Popup details** for each disaster
-- **Auto-fitting** to show all disasters
-- **Click handling** for detailed information
+- **Frontend**: Next.js 15 (App Router), React, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Mapping**: Leaflet.js, React-Leaflet
+- **Data Fetching**: Native Fetch API
+- **Icons**: Lucide React
 
-### Live Data Updates
-- **Auto-refresh** every 5 minutes
-- **Manual refresh** button
-- **Connection status** indicator
-- **Error handling** with fallback to cached data
+## 🔑 API Keys & Setup
 
-### API Integration
-- **Earthquake data** from USGS (real-time)
-- **Weather alerts** from OpenWeatherMap (with API key)
-- **News integration** from NewsAPI (with API key)
-- **Fallback mock data** when APIs are unavailable
+This project utilizes several external APIs to fetch real-time data. Some require API keys, which must be configured as environment variables.
 
-## Installation
+1.  **AQICN (World Air Quality Index Project)**
+    *   **Purpose**: Provides comprehensive Air Quality Index (AQI) data.
+    *   **Setup**:
+        *   Visit: [AQICN](https://aqicn.org/api/) to obtain your free API token.
+        *   **Environment Variable**: `AQICN_API_KEY`
 
-1. **Install dependencies**:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
+2.  **OpenWeatherMap API (Optional - for weather data)**
+    *   **Purpose**: Fetches current weather conditions (temperature, wind, humidity, etc.).
+    *   **Setup**:
+        *   Visit: [OpenWeatherMap API](https://openweathermap.org/api)
+        *   Sign up for a free account.
+        *   Obtain your API key.
+    *   **Environment Variable**: `NEXT_PUBLIC_OPENWEATHER_API_KEY`
 
-2. **Configure API keys** (optional):
-   - Copy `.env.local.example` to `.env.local`
-   - Add your API keys
+3.  **NewsAPI (Optional - for disaster news)**
+    *   **Purpose**: Aggregates news articles related to disasters.
+    *   **Setup**:
+        *   Visit: [NewsAPI.org](https://newsapi.org/)
+        *   Sign up for a free account (note: free tier has request limits).
+        *   Obtain your API key.
+    *   **Environment Variable**: `NEXT_PUBLIC_NEWS_API_KEY`
 
-3. **Run the application**:
-   ```bash
-   npm run dev
-   ```
+4.  **USGS Earthquake API (No key required)**
+    *   **Purpose**: Provides real-time earthquake data worldwide.
+    *   **Note**: This API is completely free and does not require any registration or API key.
 
-## Usage
+## 🛠️ Installation & Local Development
 
-- The app will work immediately with earthquake data (no API key required)
-- Add API keys for weather alerts and news integration
-- The map shows real earthquake data from the last 7 days
-- Click on markers for detailed information
-- Use the refresh button to update data manually
+To set up the project locally, follow these steps:
 
-## API Endpoints
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/ishan22399/DisasterSense-Global-Risk-Response-Dashboard.git
+    cd DisasterSense-Global-Risk-Response-Dashboard
+    ```
 
-### Local API Routes:
-- `GET /api/disasters` - Fetch all disaster data
-- Parameters:
-  - `minMagnitude` (default: 4.0)
-  - `daysBack` (default: 7)
+2.  **Install dependencies**:
+    ```bash
+    npm install --legacy-peer-deps
+    # or
+    yarn install --legacy-peer-deps
+    ```
 
-### External APIs Used:
-- **USGS**: `https://earthquake.usgs.gov/fdsnws/event/1/query`
-- **OpenWeatherMap**: `https://api.openweathermap.org/data/3.0/onecall`
-- **NewsAPI**: `https://newsapi.org/v2/everything`
+3.  **Configure Environment Variables**:
+    *   Create a `.env.local` file in the root of your project.
+    *   Add your API keys to this file (replace `your_key_here` with your actual keys):
+        ```
+        AQICN_API_KEY=your_aqicn_key_here
+        NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweathermap_key_here
+        NEXT_PUBLIC_NEWS_API_KEY=your_newsapi_key_here
+        ```
 
-## Development
+4.  **Run the development server**:
+    ```bash
+    npm run dev
+    # or
+    yarn dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-The app is built with:
-- **Next.js 15** with App Router
-- **TypeScript** for type safety
-- **Tailwind CSS** for styling
-- **Leaflet.js** for interactive maps
-- **shadcn/ui** for UI components
-- **Axios** for API requests
+## 🌐 Deployment
 
-## Legal & Ethical
+This application is optimized for deployment on **Vercel**, the platform built by the creators of Next.js.
 
-All APIs used are legitimate and free:
-- USGS data is public domain
-- OpenWeatherMap has a free tier
-- NewsAPI has a free tier
-- OpenStreetMap is open source
+1.  **Push to Git**: Ensure your project is pushed to a Git repository (GitHub, GitLab, Bitbucket).
+2.  **Connect to Vercel**:
+    *   Sign up or log in to [Vercel](https://vercel.com/).
+    *   Import your Git repository.
+    *   Vercel will automatically detect it's a Next.js project.
+3.  **Configure Environment Variables on Vercel**:
+    *   In your Vercel project settings, navigate to "Environment Variables".
+    *   Add `AQICN_API_KEY`, `NEXT_PUBLIC_OPENWEATHER_API_KEY`, and `NEXT_PUBLIC_NEWS_API_KEY` with their respective values.
+4.  **Deploy**: Vercel will build and deploy your application. Subsequent pushes to your connected Git branch will trigger automatic redeployments.
 
-No copyrighted or unauthorized data sources are used.
+## 🤝 Contributing
+
+Contributions are welcome! If you have suggestions for improvements, bug fixes, or new features, please feel free to:
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/YourFeature`).
+3.  Make your changes.
+4.  Commit your changes (`git commit -m 'feat: Add new feature'`).
+5.  Push to the branch (`git push origin feature/YourFeature`).
+6.  Open a Pull Request.
+
+## ⚖️ License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## 📧 Contact & Credits
+
+Built with ❤️ by [Ishan Shivankar](https://www.linkedin.com/in/ishan-shivankar/).
+
+- **GitHub**: [ishan22399](https://github.com/ishan22399)
+- **LinkedIn**: [Ishan Shivankar](https://www.linkedin.com/in/ishan-shivankar/)
+- **Twitter**: [@IshanShivankar](https://twitter.com/IshanShivankar)
