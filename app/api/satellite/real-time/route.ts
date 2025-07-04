@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherKey}&units=metric`;
     const weatherResponse = await fetchAPI(weatherUrl, 'Weather API failed');
 
-    const aqiUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=01d5a8a52924551bef6a05ba8b6b8dc9383e331a`;
+    const aqiUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${process.env.AQICN_API_KEY}`;
     const aqiResponse = await fetchAPI(aqiUrl, 'AQI API failed');
 
     const weather = {
