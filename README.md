@@ -64,7 +64,7 @@ This project utilizes several external APIs to fetch real-time data. Some requir
         *   Visit: [OpenWeatherMap API](https://openweathermap.org/api)
         *   Sign up for a free account.
         *   Obtain your API key.
-    *   **Environment Variable**: `NEXT_PUBLIC_OPENWEATHER_API_KEY`
+    *   **Environment Variable**: `OPENWEATHER_API_KEY`
 
 3.  **NewsAPI (Optional - for disaster news)**
     *   **Purpose**: Aggregates news articles related to disasters.
@@ -72,7 +72,7 @@ This project utilizes several external APIs to fetch real-time data. Some requir
         *   Visit: [NewsAPI.org](https://newsapi.org/)
         *   Sign up for a free account (note: free tier has request limits).
         *   Obtain your API key.
-    *   **Environment Variable**: `NEXT_PUBLIC_NEWS_API_KEY`
+    *   **Environment Variable**: `NEWS_API_KEY`
 
 4.  **USGS Earthquake API (No key required)**
     *   **Purpose**: Provides real-time earthquake data worldwide.
@@ -100,8 +100,8 @@ To set up the project locally, follow these steps:
     *   Add your API keys to this file (replace `your_key_here` with your actual keys):
         ```
         AQICN_API_KEY=your_aqicn_key_here
-        NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweathermap_key_here
-        NEXT_PUBLIC_NEWS_API_KEY=your_newsapi_key_here
+        OPENWEATHER_API_KEY=your_openweathermap_key_here
+        NEWS_API_KEY=your_newsapi_key_here
         ```
 
 4.  **Run the development server**:
@@ -123,7 +123,7 @@ This application is optimized for deployment on **Vercel**, the platform built b
     *   Vercel will automatically detect it's a Next.js project.
 3.  **Configure Environment Variables on Vercel**:
     *   In your Vercel project settings, navigate to "Environment Variables".
-    *   Add `AQICN_API_KEY`, `NEXT_PUBLIC_OPENWEATHER_API_KEY`, and `NEXT_PUBLIC_NEWS_API_KEY` with their respective values.
+    *   Add `AQICN_API_KEY`, `OPENWEATHER_API_KEY`, and `NEWS_API_KEY` with their respective values.
 4.  **Deploy**: Vercel will build and deploy your application. Subsequent pushes to your connected Git branch will trigger automatic redeployments.
 
 ## 🤝 Contributing

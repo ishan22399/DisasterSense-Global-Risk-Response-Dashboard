@@ -168,7 +168,7 @@ export const fetchWildfireData = async () => {
 
 // OpenWeatherMap API for severe weather
 export const fetchWeatherAlerts = async () => {
-  const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+  const apiKey = process.env.OPENWEATHER_API_KEY
   
   if (!apiKey || apiKey === 'your_openweather_api_key_here') {
     console.warn('OpenWeatherMap API key not configured')
@@ -250,7 +250,7 @@ export const fetchWeatherAlerts = async () => {
 
 // News API (Requires free API key) - Strictly disaster-focused
 export const fetchDisasterNews = async (query = 'earthquake OR hurricane OR wildfire OR flood OR tornado OR tsunami OR cyclone OR "natural disaster" OR "emergency evacuation" OR "disaster zone"') => {
-  const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY
+  const apiKey = process.env.NEWS_API_KEY
   
   if (!apiKey || apiKey === 'your_news_api_key_here') {
     console.warn('News API key not configured')

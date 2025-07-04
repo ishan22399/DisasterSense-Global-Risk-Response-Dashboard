@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const geocoding = await fetchAPI(geoUrl, 'Geocoding failed');
 
     // 2. Weather Data
-    const weatherKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const weatherKey = process.env.OPENWEATHER_API_KEY;
     if (!weatherKey) {
       throw new Error('OpenWeatherMap API key is not configured');
     }

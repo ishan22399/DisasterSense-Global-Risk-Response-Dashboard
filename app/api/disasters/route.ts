@@ -40,7 +40,7 @@ async function fetchUSGSEarthquakes() {
 
 // OpenWeatherMap API for severe weather
 async function fetchWeatherAlerts() {
-  const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+  const apiKey = process.env.OPENWEATHER_API_KEY
 
   if (!apiKey || apiKey === 'your_openweather_api_key_here') {
     console.warn("OpenWeatherMap API key not configured")
@@ -90,7 +90,7 @@ async function fetchWeatherAlerts() {
 
 // NewsAPI for disaster-related news
 async function fetchDisasterNews() {
-  const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY
+  const apiKey = process.env.NEWS_API_KEY
 
   if (!apiKey || apiKey === 'your_news_api_key_here') {
     console.warn("NewsAPI key not configured")
