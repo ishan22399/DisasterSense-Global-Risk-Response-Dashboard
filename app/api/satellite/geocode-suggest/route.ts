@@ -9,32 +9,42 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Using Photon API for geocoding suggestions
-    const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch suggestions from Photon API');
+    const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('Google Geocoding API key not configured.');
     }
-    const data = await response.json();
+
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`);
     
-    // Format the response to be more useful for the frontend
-    const suggestions = data.features.map((feature: any) => ({
-      id: feature.properties.osm_id,
-      name: feature.properties.name,
-      country: feature.properties.country,
-      state: feature.properties.state,
-      city: feature.properties.city,
-      postcode: feature.properties.postcode,
+    if (!response.ok) {
+      throw new Error(`Google Geocoding API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status !== 'OK') {
+      throw new Error(`Google Geocoding API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    }
+    
+    const suggestions = data.results.map((result: any) => ({
+      id: result.place_id,
+      name: result.formatted_address, // Use formatted_address as the primary name
+      country: result.address_components.find((comp: any) => comp.types.includes('country'))?.long_name || '',
+      state: result.address_components.find((comp: any) => comp.types.includes('administrative_area_level_1'))?.long_name || '',
+      city: result.address_components.find((comp: any) => comp.types.includes('locality'))?.long_name || '',
+      postcode: result.address_components.find((comp: any) => comp.types.includes('postal_code'))?.long_name || '',
       coordinates: {
-        lat: feature.geometry.coordinates[1],
-        lng: feature.geometry.coordinates[0],
+        lat: result.geometry.location.lat,
+        lng: result.geometry.location.lng,
       },
-      displayName: feature.properties.name + (feature.properties.city ? `, ${feature.properties.city}` : '') + (feature.properties.country ? `, ${feature.properties.country}` : '')
+      displayName: result.formatted_address,
     }));
 
     return NextResponse.json(suggestions);
   } catch (error) {
     console.error('Geocode suggest error:', error);
     // @ts-ignore
-    return NextResponse.json({ error: error.message || 'Failed to fetch geocoding suggestions.' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch Google geocoding suggestions.' }, { status: 500 });
   }
 }

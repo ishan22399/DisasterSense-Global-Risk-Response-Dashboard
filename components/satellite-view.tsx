@@ -233,7 +233,12 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
     setSuggestionsError(null);
     try {
       const data = await fetchGeocodeSuggestions(query);
-      setSuggestions(data);
+      if (data.status === 'ZERO_RESULTS') {
+        setSuggestionsError('No results found for your search. Please try a different query.');
+        setSuggestions([]);
+      } else {
+        setSuggestions(data);
+      }
     } catch (err: any) {
       setSuggestionsError(err.message);
       setSuggestions([]); // Clear suggestions on error
