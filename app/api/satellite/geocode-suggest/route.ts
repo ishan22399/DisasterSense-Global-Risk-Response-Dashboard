@@ -15,36 +15,39 @@ export async function GET(request: Request) {
       throw new Error('Google Geocoding API key not configured.');
     }
 
-    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`);
+    const sessionToken = crypto.randomUUID(); // Generate a new session token for each autocomplete session
+
+    const autocompleteResponse = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${apiKey}&sessiontoken=${sessionToken}`);
     
-    if (!response.ok) {
-      throw new Error(`Google Geocoding API request failed: ${response.status}`);
+    if (!autocompleteResponse.ok) {
+      throw new Error(`Google Places Autocomplete API request failed: ${autocompleteResponse.status}`);
     }
 
-    const data = await response.json();
+    const autocompleteData = await autocompleteResponse.json();
 
-    if (data.status !== 'OK') {
-      throw new Error(`Google Geocoding API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    if (autocompleteData.status !== 'OK' && autocompleteData.status !== 'ZERO_RESULTS') {
+      throw new Error(`Google Places Autocomplete API error: ${autocompleteData.status} - ${autocompleteData.error_message || 'Unknown error'}`);
     }
-    
-    const suggestions = data.results.map((result: any) => ({
-      id: result.place_id,
-      name: result.formatted_address, // Use formatted_address as the primary name
-      country: result.address_components.find((comp: any) => comp.types.includes('country'))?.long_name || '',
-      state: result.address_components.find((comp: any) => comp.types.includes('administrative_area_level_1'))?.long_name || '',
-      city: result.address_components.find((comp: any) => comp.types.includes('locality'))?.long_name || '',
-      postcode: result.address_components.find((comp: any) => comp.types.includes('postal_code'))?.long_name || '',
-      coordinates: {
-        lat: result.geometry.location.lat,
-        lng: result.geometry.location.lng,
-      },
-      displayName: result.formatted_address,
+
+    if (autocompleteData.status === 'ZERO_RESULTS') {
+      return NextResponse.json([]);
+    }
+
+    const suggestions = autocompleteData.predictions.map((prediction: any) => ({
+      id: prediction.place_id,
+      name: prediction.structured_formatting.main_text,
+      country: '', // Not available from Autocomplete API directly
+      state: '',   // Not available from Autocomplete API directly
+      city: '',    // Not available from Autocomplete API directly
+      postcode: '',// Not available from Autocomplete API directly
+      coordinates: null, // Coordinates will be fetched on selection
+      displayName: prediction.description,
     }));
 
     return NextResponse.json(suggestions);
   } catch (error) {
     console.error('Geocode suggest error:', error);
     // @ts-ignore
-    return NextResponse.json({ error: error.message || 'Failed to fetch Google geocoding suggestions.' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch Google Places Autocomplete suggestions.' }, { status: 500 });
   }
 }

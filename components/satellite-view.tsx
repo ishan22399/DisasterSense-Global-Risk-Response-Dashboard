@@ -43,16 +43,16 @@ interface SatelliteViewProps {
 }
 
 interface Suggestion {
-    id: number;
+    id: string; // Google Place ID is a string
     name: string;
     country: string;
     state: string;
     city: string;
     postcode: string;
-    coordinates: {
+    coordinates: { // Coordinates are now optional
         lat: number;
         lng: number;
-    };
+    } | null;
     displayName: string;
 }
 
@@ -123,7 +123,9 @@ const fetchRealTimeData = (lat: number, lon: number) => fetchApi(`/api/satellite
 const fetchChangeDetection = (lat: number, lon: number, date1: string, date2: string) => fetchApi(`/api/satellite/change-detection?lat=${lat}&lon=${lon}&date1=${date1}&date2=${date2}`)
 const fetchPredictivePath = (disaster: any) => fetchApi(`/api/satellite/predictive-path`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(disaster) })
 const fetchDamageAssessment = (disaster: any) => fetchApi(`/api/satellite/damage-assessment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(disaster) })
-const fetchGeocodeSuggestions = (query: string) => fetchApi(`/api/satellite/geocode-suggest?q=${query}`)
+  const fetchGeocodeDetails = (placeId: string) => fetchApi(`/api/satellite/geocode-details?place_id=${placeId}`);
+
+  const fetchGeocodeSuggestions = (query: string) => fetchApi(`/api/satellite/geocode-suggest?q=${query}`);
 
 // --- LEAFLET & MAP HELPERS ---
 const setupLeafletIcons = () => {
@@ -233,12 +235,7 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
     setSuggestionsError(null);
     try {
       const data = await fetchGeocodeSuggestions(query);
-      if (data.status === 'ZERO_RESULTS') {
-        setSuggestionsError('No results found for your search. Please try a different query.');
-        setSuggestions([]);
-      } else {
-        setSuggestions(data);
-      }
+      setSuggestions(data);
     } catch (err: any) {
       setSuggestionsError(err.message);
       setSuggestions([]); // Clear suggestions on error
@@ -266,14 +263,25 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
     handleApiCall(() => fetchDamageAssessment(disaster), setDamageAssessment)
   }
 
-  const handleSuggestionClick = (suggestion: Suggestion) => {
+  const handleSuggestionClick = async (suggestion: Suggestion) => {
     setSearchQuery(suggestion.displayName);
     setSuggestions([]);
     setIsSuggestionsVisible(false);
-    const { lat, lng } = suggestion.coordinates;
-    setMapCenter([lat, lng]);
-    setMapZoom(12);
-    handleApiCall(() => fetchRealTimeData(lat, lng), setRealTimeData);
+
+    // Fetch full details for the selected place_id
+    try {
+      const fullLocation = await fetchGeocodeDetails(suggestion.id);
+      if (fullLocation.coordinates) {
+        const { lat, lng } = fullLocation.coordinates;
+        setMapCenter([lat, lng]);
+        setMapZoom(12);
+        handleApiCall(() => fetchRealTimeData(lat, lng), setRealTimeData);
+      } else {
+        setSuggestionsError('Could not retrieve coordinates for the selected location.');
+      }
+    } catch (err: any) {
+      setSuggestionsError(err.message);
+    }
   };
 
   const handleMapClick = (e: any) => {
