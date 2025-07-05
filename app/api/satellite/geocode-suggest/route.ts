@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Query parameter 'q' is required" }, { status: 400 });
   }
 
-  const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+  const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
   if (!GOOGLE_API_KEY) {
     return NextResponse.json({ error: "Google Places API key not configured" }, { status: 500 });
   }
