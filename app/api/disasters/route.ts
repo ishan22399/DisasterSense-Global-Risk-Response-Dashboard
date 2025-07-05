@@ -42,7 +42,7 @@ async function fetchUSGSEarthquakes() {
 async function fetchWeatherAlerts() {
   const apiKey = process.env.OPENWEATHER_API_KEY
 
-  if (!apiKey || apiKey === 'your_openweather_api_key_here') {
+  if (!apiKey) {
     console.warn("OpenWeatherMap API key not configured")
     return []
   }
@@ -65,7 +65,7 @@ async function fetchWeatherAlerts() {
         const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&appid=${apiKey}&units=metric`,
           {
-            next: { revalidate: 600 }, // Cache for 10 minutes
+            next: { revalidate: 1800 }, // Cache for 30 minutes
           },
         )
 
