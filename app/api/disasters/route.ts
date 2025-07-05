@@ -92,7 +92,7 @@ async function fetchWeatherAlerts() {
 async function fetchDisasterNews() {
   const apiKey = process.env.NEWS_API_KEY
 
-  if (!apiKey || apiKey === 'your_news_api_key_here') {
+  if (!apiKey) {
     console.warn("NewsAPI key not configured")
     return []
   }
@@ -119,7 +119,7 @@ async function fetchDisasterNews() {
         headers: {
           'X-API-Key': apiKey,
         },
-        next: { revalidate: 900 }, // Cache for 15 minutes
+        next: { revalidate: 1800 }, // Cache for 30 minutes to reduce API calls
       },
     )
 
