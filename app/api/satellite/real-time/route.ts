@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 
 // Utility to fetch data with error handling
@@ -26,18 +25,38 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Geocoding (Reverse)
-    const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
-    const geocoding = await fetchAPI(geoUrl, 'Geocoding failed');
+    // 1. Geocoding (Reverse) - Use Google Geocoding API
+    const googleApiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+    if (!googleApiKey) {
+      return NextResponse.json({ error: 'Google Geocoding API key not configured.' }, { status: 500 });
+    }
+    const geoUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${googleApiKey}`;
+    const geoData = await fetchAPI(geoUrl, 'Google Geocoding failed');
+    const geocoding = geoData.results?.[0] || {};
 
-    // 2. Weather Data (now handled client-side by Google Maps Platform)
+    // 2. Weather Data (OpenWeatherMap, free tier)
+    const openWeatherApiKey = process.env.OPENWEATHER_API_KEY;
+    let weather = null;
+    if (openWeatherApiKey) {
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`;
+      const weatherData = await fetchAPI(weatherUrl, 'OpenWeatherMap fetch failed');
+      weather = {
+        temperature: weatherData.main?.temp,
+        wind_speed: weatherData.wind?.speed,
+        humidity: weatherData.main?.humidity,
+        aqi: null, // AQI not available in free OpenWeatherMap, can be extended with another free API if needed
+        description: weatherData.weather?.[0]?.description,
+        icon: weatherData.weather?.[0]?.icon,
+        clouds: weatherData.clouds?.all ?? null // Add clouds property for satellite.cloudCover
+      };
+    }
 
     // 3. Satellite & Analysis Data (Simulated for now, but can be replaced with real APIs)
     const satellite = {
       timestamp: new Date().toISOString(),
       nextPass: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
       resolution: '10m',
-      cloudCover: 0, // Cloud cover will be handled by Google Maps Weather Layer
+      cloudCover: weather?.clouds ?? 0,
       quality: 100,
       sensors: ['RGB', 'Multispectral', 'Thermal IR'],
     };
@@ -52,6 +71,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       geocoding,
+      weather,
       satellite,
       analysis,
     });

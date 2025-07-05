@@ -682,6 +682,22 @@ export function DisasterDashboard() {
           </div>
         )}
 
+        {/* USGS API Down Warning */}
+        {!apiStatus.usgs && (
+          <div className="mb-6">
+            <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertTitle className="text-red-800 dark:text-red-200">USGS Earthquakes API Unavailable</AlertTitle>
+              <AlertDescription className="text-red-700 dark:text-red-300">
+                {typeof apiStatus.usgs === "string" && apiStatus.usgs
+                  ? <>The USGS Earthquakes data source returned an error: <span className="font-mono">{apiStatus.usgs}</span></>
+                  : <>The USGS Earthquakes data source is currently not responding. Earthquake data may be missing or outdated. Please check your network or try again later.</>
+                }
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         {/* Enhanced Data Source Information */}
         <div className="mb-6">
           <Card>

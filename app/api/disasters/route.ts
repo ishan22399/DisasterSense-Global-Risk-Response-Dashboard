@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { fetchEarthquakeData } from "../../../lib/disaster-api"
 
 // NASA EONET API for natural disasters
 async function fetchNASAEvents() {
@@ -22,19 +23,11 @@ async function fetchNASAEvents() {
 // USGS Earthquake API
 async function fetchUSGSEarthquakes() {
   try {
-    const response = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson", {
-      next: { revalidate: 300 }, // Cache for 5 minutes
-    })
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch USGS earthquake data")
-    }
-
-    const data = await response.json()
-    return data.features || []
-  } catch (error) {
-    console.error("USGS API error:", error)
-    return []
+    const data: EarthquakeData = await fetchEarthquakeData();
+    return { data: data.features, error: null };
+  } catch (error: any) {
+    console.error("USGS API error:", error);
+    return { data: [], error: error?.message || "Unknown error" };
   }
 }
 
@@ -138,7 +131,7 @@ async function fetchDisasterNews() {
 export async function GET() {
   try {
     // Fetch data from all sources in parallel
-    const [nasaEvents, usgsEarthquakes, weatherData, newsArticles] = await Promise.all([
+    const [nasaEvents, usgsResult, weatherData, newsArticles] = await Promise.all([
       fetchNASAEvents(),
       fetchUSGSEarthquakes(),
       fetchWeatherAlerts(),
@@ -195,7 +188,7 @@ export async function GET() {
     })
 
     // Process USGS earthquakes
-    usgsEarthquakes.forEach((earthquake: any) => {
+    usgsResult.data.forEach((earthquake: any) => {
       const props = earthquake.properties
       const coords = earthquake.geometry.coordinates
 
@@ -623,7 +616,7 @@ export async function GET() {
       sources: ["NASA EONET", "USGS", "OpenWeatherMap", "NewsAPI"],
       apiStatus: {
         nasa: nasaEvents.length > 0,
-        usgs: usgsEarthquakes.length > 0,
+        usgs: usgsResult.error ? usgsResult.error : (usgsResult.data.length > 0),
         weather: weatherData.length > 0,
         news: newsArticles.length > 0
       },
