@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { fetchEarthquakeData } from "../../../lib/disaster-api"
+import { fetchEarthquakeData, EarthquakeData } from "../../../lib/disaster-api"
 
 // NASA EONET API for natural disasters
 async function fetchNASAEvents() {

@@ -5,9 +5,15 @@ async function fetchAPI(url: string, errorMessage: string) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`${errorMessage}: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`${errorMessage}: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    return await response.json();
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json();
+    } else {
+      return await response.text(); // Return text if not JSON
+    }
   } catch (error) {
     console.error(error);
     throw error;
@@ -37,18 +43,26 @@ export async function GET(request: Request) {
     // 2. Weather Data (OpenWeatherMap, free tier)
     const openWeatherApiKey = process.env.OPENWEATHER_API_KEY;
     let weather = null;
+    let aqi = null;
+
     if (openWeatherApiKey) {
       const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}&units=metric`;
-      const weatherData = await fetchAPI(weatherUrl, 'OpenWeatherMap fetch failed');
+      const weatherData = await fetchAPI(weatherUrl, 'OpenWeatherMap weather fetch failed');
       weather = {
         temperature: weatherData.main?.temp,
         wind_speed: weatherData.wind?.speed,
         humidity: weatherData.main?.humidity,
-        aqi: null, // AQI not available in free OpenWeatherMap, can be extended with another free API if needed
         description: weatherData.weather?.[0]?.description,
         icon: weatherData.weather?.[0]?.icon,
-        clouds: weatherData.clouds?.all ?? null // Add clouds property for satellite.cloudCover
+        clouds: weatherData.clouds?.all ?? null
       };
+
+      // Fetch AQI data
+      const aqiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${openWeatherApiKey}`;
+      const aqiData = await fetchAPI(aqiUrl, 'OpenWeatherMap AQI fetch failed');
+      if (aqiData.list && aqiData.list.length > 0) {
+        aqi = aqiData.list[0].main.aqi;
+      }
     }
 
     // 3. Satellite & Analysis Data (Simulated for now, but can be replaced with real APIs)
@@ -71,7 +85,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       geocoding,
-      weather,
+      weather: { ...weather, aqi }, // Include AQI in weather object
       satellite,
       analysis,
     });

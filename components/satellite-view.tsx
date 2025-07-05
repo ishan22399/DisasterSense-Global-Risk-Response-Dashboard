@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
@@ -54,6 +53,8 @@ interface Suggestion {
         lng: number;
     } | null;
     displayName: string;
+    aqi?: number;
+    aqiDisplay?: string;
 }
 
 interface RealTimeData {
@@ -62,12 +63,12 @@ interface RealTimeData {
     // Add other geocoding properties if available
   };
   weather: {
-    temperature: number;
-    wind_speed: number;
-    humidity: number;
-    aqi: number;
-    description: string;
-    icon: string;
+    temperature?: number;
+    wind_speed?: number;
+    humidity?: number;
+    aqi?: number;
+    description?: string;
+    icon?: string;
     // Add other weather properties as needed
   };
 }
@@ -124,8 +125,7 @@ const fetchChangeDetection = (lat: number, lon: number, date1: string, date2: st
 const fetchPredictivePath = (disaster: any) => fetchApi(`/api/satellite/predictive-path`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(disaster) })
 const fetchDamageAssessment = (disaster: any) => fetchApi(`/api/satellite/damage-assessment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(disaster) })
   const fetchGeocodeDetails = (placeId: string) => fetchApi(`/api/satellite/geocode-details?place_id=${placeId}`);
-
-  const fetchGeocodeSuggestions = (query: string) => fetchApi(`/api/satellite/geocode-suggest?q=${query}`);
+const fetchGeocodeSuggestions = (query: string) => fetchApi(`/api/satellite/geocode-suggest?q=${query}`);
 
 // --- LEAFLET & MAP HELPERS ---
 const setupLeafletIcons = () => {
@@ -156,6 +156,7 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
   const [changeDetectionResult, setChangeDetectionResult] = useState<ChangeDetectionResult | null>(null)
   const [predictivePath, setPredictivePath] = useState<PredictivePathResult | null>(null)
   const [damageAssessment, setDamageAssessment] = useState<DamageAssessmentResult | null>(null)
+  const [selectedLocationDetails, setSelectedLocationDetails] = useState<any | null>(null);
 
   const [mapCenter, setMapCenter] = useState<LatLngExpression>([20, 0])
   const [mapZoom, setMapZoom] = useState(3)
@@ -268,14 +269,27 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
     setSuggestions([]);
     setIsSuggestionsVisible(false);
 
-    // Fetch full details for the selected place_id
     try {
       const fullLocation = await fetchGeocodeDetails(suggestion.id);
+      setSelectedLocationDetails(fullLocation);
+
       if (fullLocation.coordinates) {
         const { lat, lng } = fullLocation.coordinates;
         setMapCenter([lat, lng]);
         setMapZoom(12);
-        handleApiCall(() => fetchRealTimeData(lat, lng), setRealTimeData);
+        // Fetch real-time data and override geocoding.display_name
+        const realTime = await fetchRealTimeData(lat, lng);
+        setRealTimeData({
+          ...realTime,
+          geocoding: {
+            ...realTime.geocoding,
+            display_name: fullLocation.displayName || fullLocation.name || realTime.geocoding?.display_name || ''
+          },
+          weather: {
+            ...realTime.weather,
+            aqi: fullLocation.aqi
+          }
+        });
       } else {
         setSuggestionsError('Could not retrieve coordinates for the selected location.');
       }
@@ -284,22 +298,27 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
     }
   };
 
-  const handleMapClick = (e: any) => {
-    const { lat, lng } = e.latlng
-    console.log(`Map clicked at Lat: ${lat}, Lng: ${lng}`);
-    handleApiCall(() => fetchRealTimeData(lat, lng), setRealTimeData)
-  }
+  const handleMapClick = async (e: any) => {
+    const { lat, lng } = e.latlng;
+    // Fetch reverse geocode for clicked location
+    const details = await fetchReverseGeocode(lat, lng);
+    setSelectedLocationDetails(details);
+    await handleApiCall(() => fetchRealTimeData(lat, lng), setRealTimeData);
+  };
 
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       setIsFetchingCurrentLocation(true);
       setSuggestionsError(null);
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
           setMapCenter([latitude, longitude]);
           setMapZoom(12);
-          handleApiCall(() => fetchRealTimeData(latitude, longitude), setRealTimeData);
+          // Fetch reverse geocode for current location
+          const details = await fetchReverseGeocode(latitude, longitude);
+          setSelectedLocationDetails(details);
+          await handleApiCall(() => fetchRealTimeData(latitude, longitude), setRealTimeData);
           setIsFetchingCurrentLocation(false);
         },
         (error) => {
@@ -403,7 +422,73 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
                 )}
             </div>
             {error && <Alert variant="destructive" className="mt-4"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-            {realTimeData && (
+            {selectedLocationDetails ? (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    Location Details: {selectedLocationDetails.displayName || selectedLocationDetails.name || 'N/A'}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedLocationDetails.country && <span>Country: {selectedLocationDetails.country} </span>}
+                    {selectedLocationDetails.state && <span> | State: {selectedLocationDetails.state} </span>}
+                    {selectedLocationDetails.city && <span> | City: {selectedLocationDetails.city} </span>}
+                    {selectedLocationDetails.postcode && <span> | Postcode: {selectedLocationDetails.postcode} </span>}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {selectedLocationDetails.coordinates && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <Globe className="h-4 w-4" />
+                        <span>
+                          Coordinates: {selectedLocationDetails.coordinates.lat}, {selectedLocationDetails.coordinates.lng}
+                        </span>
+                      </Badge>
+                    )}
+                    {selectedLocationDetails.aqi !== null && selectedLocationDetails.aqi !== undefined && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <AirVent className="h-4 w-4" />
+                        <span>
+                          AQI: {selectedLocationDetails.aqi}
+                          {selectedLocationDetails.aqiDisplay && (
+                            <span className="ml-2">({selectedLocationDetails.aqiDisplay})</span>
+                          )}
+                        </span>
+                      </Badge>
+                    )}
+                    {/* Show weather if available */}
+                    {realTimeData?.weather?.temperature !== undefined && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <Thermometer className="h-4 w-4" />
+                        <span>Temperature: {realTimeData.weather.temperature}°C</span>
+                      </Badge>
+                    )}
+                    {realTimeData?.weather?.description && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <Cloud className="h-4 w-4" />
+                        <span>Conditions: {realTimeData.weather.description}</span>
+                        {realTimeData.weather?.icon && (
+                          <img src={`http://openweathermap.org/img/wn/${realTimeData.weather.icon}.png`} alt="Weather icon" className="inline-block w-6 h-6" />
+                        )}
+                      </Badge>
+                    )}
+                    {realTimeData?.weather?.wind_speed !== undefined && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <Wind className="h-4 w-4" />
+                        <span>Wind Speed: {realTimeData.weather.wind_speed} m/s</span>
+                      </Badge>
+                    )}
+                    {realTimeData?.weather?.humidity !== undefined && (
+                      <Badge variant="secondary" className="flex items-center gap-2 p-2">
+                        <Droplets className="h-4 w-4" />
+                        <span>Humidity: {realTimeData.weather.humidity}%</span>
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : realTimeData && (
               <Card className="mt-4">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -414,7 +499,7 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {realTimeData.weather?.temperature && (
+                    {realTimeData.weather?.temperature !== undefined && (
                       <Badge variant="secondary" className="flex items-center gap-2 p-2">
                         <Thermometer className="h-4 w-4" />
                         <span>Temperature: {realTimeData.weather.temperature}°C</span>
@@ -429,19 +514,19 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
                         )}
                       </Badge>
                     )}
-                    {realTimeData.weather?.wind_speed && (
+                    {realTimeData.weather?.wind_speed !== undefined && (
                       <Badge variant="secondary" className="flex items-center gap-2 p-2">
                         <Wind className="h-4 w-4" />
                         <span>Wind Speed: {realTimeData.weather.wind_speed} m/s</span>
                       </Badge>
                     )}
-                    {realTimeData.weather?.humidity && (
+                    {realTimeData.weather?.humidity !== undefined && (
                       <Badge variant="secondary" className="flex items-center gap-2 p-2">
                         <Droplets className="h-4 w-4" />
                         <span>Humidity: {realTimeData.weather.humidity}%</span>
                       </Badge>
                     )}
-                    {realTimeData.weather?.aqi && (
+                    {realTimeData.weather?.aqi !== undefined && (
                       <Badge variant="secondary" className="flex items-center gap-2 p-2">
                         <AirVent className="h-4 w-4" />
                         <span>AQI: {realTimeData.weather.aqi}</span>
@@ -450,8 +535,7 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
                   </div>
                 </CardContent>
               </Card>
-            )
-            }
+            )}
         </CardContent>
       </Card>
 
@@ -531,4 +615,37 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
 
             timeout = setTimeout(() => resolve(func(...args)), waitFor);
         });
+}
+
+const GOOGLE_API_KEY = "AIzaSyA-C7GVfZcNFhnF64ksuXF1px1dJh5x3l4";
+
+// Helper to fetch reverse geocode details from Google
+async function fetchReverseGeocode(lat: number, lng: number) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  const result = data.results?.[0];
+  if (!result) return null;
+
+  let country = "";
+  let state = "";
+  let city = "";
+  let postcode = "";
+
+  result.address_components?.forEach((component: any) => {
+    if (component.types.includes("country")) country = component.long_name;
+    else if (component.types.includes("administrative_area_level_1")) state = component.long_name;
+    else if (component.types.includes("locality")) city = component.long_name;
+    else if (component.types.includes("postal_code")) postcode = component.long_name;
+  });
+
+  return {
+    displayName: result.formatted_address,
+    name: result.formatted_address,
+    country,
+    state,
+    city,
+    postcode,
+    coordinates: { lat, lng }
+  };
 }
