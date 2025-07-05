@@ -617,7 +617,7 @@ function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
         });
 }
 
-const GOOGLE_API_KEY = "AIzaSyA-C7GVfZcNFhnF64ksuXF1px1dJh5x3l4";
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 // Helper to fetch reverse geocode details from Google
 async function fetchReverseGeocode(lat: number, lng: number) {
