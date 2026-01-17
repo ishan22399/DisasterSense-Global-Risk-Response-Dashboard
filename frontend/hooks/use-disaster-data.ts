@@ -84,6 +84,9 @@ export const useDisasterData = () => {
   useEffect(() => {
     if (isMounted) {
       fetchDisasters()
+      // Set up auto-refresh every 5 minutes (match backend ingestion timing)
+      const interval = setInterval(fetchDisasters, 5 * 60 * 1000)
+      return () => clearInterval(interval)
     }
   }, [fetchDisasters, isMounted])
 

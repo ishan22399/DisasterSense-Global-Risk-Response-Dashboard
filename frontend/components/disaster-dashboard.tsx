@@ -53,7 +53,7 @@ export function DisasterDashboard() {
   const [isMounted, setIsMounted] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(true)
-  const [refreshInterval, setRefreshInterval] = useState(30) // seconds
+  const [refreshInterval, setRefreshInterval] = useState(60) // Changed from 30s to 60s (1 minute)
   const [lastAutoRefresh, setLastAutoRefresh] = useState<Date>(new Date())
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected')
   const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'outdated'>('fresh')
@@ -114,9 +114,9 @@ export function DisasterDashboard() {
       const timeDiff = now.getTime() - lastUpdated.getTime()
       const minutesDiff = timeDiff / (1000 * 60)
 
-      if (minutesDiff < 2) {
+      if (minutesDiff < 1) {
         setDataFreshness('fresh')
-      } else if (minutesDiff < 10) {
+      } else if (minutesDiff < 5) {
         setDataFreshness('stale')
       } else {
         setDataFreshness('outdated')
@@ -124,7 +124,7 @@ export function DisasterDashboard() {
     }
 
     updateFreshness()
-    const freshnessInterval = setInterval(updateFreshness, 30000) // Check every 30 seconds
+    const freshnessInterval = setInterval(updateFreshness, 10000) // Check every 10 seconds
 
     return () => clearInterval(freshnessInterval)
   }, [lastUpdated])

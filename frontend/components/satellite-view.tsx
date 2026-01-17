@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { 
   Card, 
   CardContent, 
@@ -25,14 +25,181 @@ import {
 } from "lucide-react"
 import { DisasterInsightsPanel } from "./disaster-insights-panel"
 import type { LatLngExpression, LatLngTuple } from "leaflet"
-import { TileLayer, Marker, Popup, Circle, useMapEvents, Polyline } from "react-leaflet"
-import "leaflet.heat"
-import dynamic from 'next/dynamic'
 
-const MapContainer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.MapContainer),
-  { ssr: false }
-)
+// Raw Leaflet map component - no react-leaflet
+function RawLeafletMap({ 
+  center, 
+  zoom, 
+  mapRef, 
+  disasters,
+  selectedDisaster,
+  onDisasterSelect,
+  predictivePath,
+  changeDetectionResult,
+  onMapClick
+}: any) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const layersRef = useRef<any[]>([]);
+
+  // Initialize map once
+  useEffect(() => {
+    if (!containerRef.current || mapInstanceRef.current) return;
+
+    try {
+      const L = require('leaflet');
+      require('leaflet.heat');
+      
+      // Initialize map
+      mapInstanceRef.current = L.map(containerRef.current, {
+        center: center,
+        zoom: zoom,
+        zoomControl: false,
+      });
+
+      // Add tile layer
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, GeoEye',
+      }).addTo(mapInstanceRef.current);
+
+      // Setup click handler
+      mapInstanceRef.current.on('click', (e: any) => {
+        onMapClick?.(e);
+      });
+
+      // Expose map instance to parent
+      mapRef.current = mapInstanceRef.current;
+    } catch (e) {
+      console.error('Failed to initialize map:', e);
+    }
+
+    return () => {
+      // Don't destroy map, just cleanup
+    };
+  }, []);
+
+  // Update view when center/zoom changes
+  useEffect(() => {
+    if (mapInstanceRef.current && center && zoom) {
+      mapInstanceRef.current.setView(center, zoom);
+    }
+  }, [center, zoom]);
+
+  // Add disaster markers
+  useEffect(() => {
+    if (!mapInstanceRef.current || !disasters) return;
+
+    try {
+      const L = require('leaflet');
+      
+      // Clear old markers
+      layersRef.current.forEach(layer => {
+        mapInstanceRef.current.removeLayer(layer);
+      });
+      layersRef.current = [];
+
+      // Add new markers
+      disasters.forEach((disaster: any) => {
+        if (disaster.location) {
+          const marker = L.marker([disaster.location.lat, disaster.location.lng])
+            .bindPopup(disaster.title)
+            .on('click', () => onDisasterSelect?.(disaster))
+            .addTo(mapInstanceRef.current);
+          layersRef.current.push(marker);
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to add markers:', e);
+    }
+  }, [disasters, onDisasterSelect]);
+
+  // Add selected disaster circle
+  useEffect(() => {
+    if (!mapInstanceRef.current || !selectedDisaster?.location) return;
+
+    try {
+      const L = require('leaflet');
+      
+      // Remove old circle
+      layersRef.current.forEach(layer => {
+        if (layer._radius !== undefined) {
+          mapInstanceRef.current.removeLayer(layer);
+          layersRef.current = layersRef.current.filter(l => l !== layer);
+        }
+      });
+
+      // Add new circle
+      const circle = L.circle([selectedDisaster.location.lat, selectedDisaster.location.lng], {
+        radius: selectedDisaster.radius || 20000,
+        color: 'orange',
+        fillColor: 'orange',
+        fillOpacity: 0.2,
+      }).addTo(mapInstanceRef.current);
+      layersRef.current.push(circle);
+    } catch (e) {
+      console.warn('Failed to add circle:', e);
+    }
+  }, [selectedDisaster]);
+
+  // Add predictive path
+  useEffect(() => {
+    if (!mapInstanceRef.current || !predictivePath?.predictedPath) return;
+
+    try {
+      const L = require('leaflet');
+      
+      // Remove old polyline
+      layersRef.current.forEach(layer => {
+        if (layer._latlngs !== undefined) {
+          mapInstanceRef.current.removeLayer(layer);
+          layersRef.current = layersRef.current.filter(l => l !== layer);
+        }
+      });
+
+      // Add new polyline
+      const polyline = L.polyline(
+        predictivePath.predictedPath.map((p: any) => [p.lat, p.lng]),
+        { color: '#ff00ff', weight: 3, dashArray: '5, 10' }
+      ).addTo(mapInstanceRef.current);
+      layersRef.current.push(polyline);
+    } catch (e) {
+      console.warn('Failed to add polyline:', e);
+    }
+  }, [predictivePath]);
+
+  // Add change detection circles
+  useEffect(() => {
+    if (!mapInstanceRef.current || !changeDetectionResult?.changes) return;
+
+    try {
+      const L = require('leaflet');
+      
+      // Remove old change detection circles
+      layersRef.current.forEach(layer => {
+        if (layer._popup?.getContent()?.includes('Severity')) {
+          mapInstanceRef.current.removeLayer(layer);
+          layersRef.current = layersRef.current.filter(l => l !== layer);
+        }
+      });
+
+      // Add new change detection circles
+      changeDetectionResult.changes.forEach((change: any) => {
+        const circle = L.circle([change.location.lat, change.location.lng], {
+          radius: change.area * 500,
+          color: '#00FFFF',
+          weight: 2,
+        })
+          .bindPopup(`<b>${change.type.replace('_', ' ')}</b><br/>Severity: ${change.severity.toFixed(2)}`)
+          .addTo(mapInstanceRef.current);
+        layersRef.current.push(circle);
+      });
+    } catch (e) {
+      console.warn('Failed to add change detection circles:', e);
+    }
+  }, [changeDetectionResult]);
+
+  return <div ref={containerRef} style={{ height: "100%", width: "100%" }} />;
+}
 
 // --- TYPE DEFINITIONS ---
 interface SatelliteViewProps {
@@ -130,20 +297,19 @@ const fetchGeocodeSuggestions = (query: string) => fetchApi(`/api/satellite/geoc
 // --- LEAFLET & MAP HELPERS ---
 const setupLeafletIcons = () => {
   if (typeof window !== 'undefined') {
-    const L = require('leaflet');
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-    });
+    try {
+      const L = require('leaflet');
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      });
+    } catch (e) {
+      console.warn('Failed to setup Leaflet icons:', e);
+    }
   }
 };
-
-function MapEventsHandler({ onMapClick }: any) {
-  useMapEvents({ click: onMapClick });
-  return null;
-}
 
 // --- MAIN COMPONENT ---
 export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }: SatelliteViewProps) {
@@ -178,6 +344,15 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
   useEffect(() => {
     setIsMounted(true)
     setupLeafletIcons()
+    
+    // Load leaflet.heat only in browser environment
+    if (typeof window !== 'undefined') {
+      try {
+        require('leaflet.heat')
+      } catch (e) {
+        console.warn('Failed to load leaflet.heat:', e)
+      }
+    }
 
     const handleClickOutside = (event: MouseEvent) => {
         if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -200,17 +375,50 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
   }, [selectedDisaster])
 
   useEffect(() => {
-    if (damageAssessment?.heatmap && mapRef.current) {
-        const L = require('leaflet')
+    if (damageAssessment?.heatmap && mapRef.current && Array.isArray(damageAssessment.heatmap) && damageAssessment.heatmap.length > 0) {
+      try {
+        const L = require('leaflet');
+        const map = mapRef.current;
+        
         if (heatLayerRef.current) {
-            mapRef.current.removeLayer(heatLayerRef.current)
+          map.removeLayer(heatLayerRef.current);
         }
-        heatLayerRef.current = L.heatLayer(damageAssessment.heatmap, { radius: 25, blur: 15, maxZoom: 12 }).addTo(mapRef.current)
-    } else if (heatLayerRef.current) {
-        mapRef.current.removeLayer(heatLayerRef.current)
-        heatLayerRef.current = null
+        
+        // Validate heatmap data format: should be array of [lat, lng, intensity]
+        const validHeatData = damageAssessment.heatmap.filter((point: any) => 
+          Array.isArray(point) && point.length === 3 && 
+          typeof point[0] === 'number' && typeof point[1] === 'number' && typeof point[2] === 'number'
+        );
+        
+        if (validHeatData.length > 0) {
+          heatLayerRef.current = L.heatLayer(validHeatData, { radius: 25, blur: 15, maxZoom: 12 }).addTo(map);
+        }
+      } catch (e) {
+        console.warn('Failed to add heat layer:', e);
+      }
+    } else if (heatLayerRef.current && mapRef.current) {
+      try {
+        mapRef.current.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      } catch (e) {
+        console.warn('Failed to remove heat layer:', e);
+      }
     }
   }, [damageAssessment])
+
+  // Setup map click handler
+  useEffect(() => {
+    if (mapRef.current) {
+      const map = mapRef.current;
+      const handleClick = (e: any) => {
+        handleMapClick(e);
+      };
+      map.on('click', handleClick);
+      return () => {
+        map.off('click', handleClick);
+      };
+    }
+  }, [mapRef])
 
   const handleSearchQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -546,23 +754,25 @@ export function SatelliteView({ disasters, selectedDisaster, onDisasterSelect }:
               <CardTitle className="flex items-center"><Globe className="h-5 w-5 mr-2" />Interactive Map</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[500px] rounded-lg overflow-hidden border">
-                  <MapContainer center={mapCenter} zoom={mapZoom} ref={mapRef} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-                      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Esri, Maxar, GeoEye' />
-                      <MapEventsHandler onMapClick={handleMapClick} />
-                      {disasters.map((dis, idx) => (
-                          dis.location && <Marker key={idx} position={[dis.location.lat, dis.location.lng]} eventHandlers={{ click: () => onDisasterSelect && onDisasterSelect(dis) }}><Popup>{dis.title}</Popup></Marker>
-                      ))}
-                      {selectedDisaster && selectedDisaster.location && (
-                          <Circle center={[selectedDisaster.location.lat, selectedDisaster.location.lng]} radius={selectedDisaster.radius || 20000} pathOptions={{ color: 'orange', fillColor: 'orange', fillOpacity: 0.2 }} />
-                      )}
-                      {predictivePath && <Polyline positions={predictivePath.predictedPath.map(p => [p.lat, p.lng] as LatLngTuple)} pathOptions={{ color: '#ff00ff', weight: 3, dashArray: '5, 10' }} />}
-                      {changeDetectionResult && changeDetectionResult.changes.map((change, idx) => (
-                          <Circle key={idx} center={[change.location.lat, change.location.lng]} radius={change.area * 500} pathOptions={{ color: '#00FFFF', weight: 2 }}>
-                              <Popup><b>{change.type.replace('_', ' ')}</b><br/>Severity: {change.severity.toFixed(2)}</Popup>
-                          </Circle>
-                      ))}
-                  </MapContainer>
+              <div className="relative h-[500px] rounded-lg overflow-hidden border">
+                {!isMounted && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-50">
+                    <RefreshCw className="h-8 w-8 animate-spin" />
+                  </div>
+                )}
+                {isMounted ? (
+                  <RawLeafletMap
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    mapRef={mapRef}
+                    disasters={disasters}
+                    selectedDisaster={selectedDisaster}
+                    onDisasterSelect={onDisasterSelect}
+                    predictivePath={predictivePath}
+                    changeDetectionResult={changeDetectionResult}
+                    onMapClick={handleMapClick}
+                  />
+                ) : null}
               </div>
             </CardContent>
           </Card>
