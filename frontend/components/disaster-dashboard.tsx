@@ -105,7 +105,7 @@ export function DisasterDashboard() {
     }
   }, [isRealTimeEnabled, refetch])
 
-  // Monitor data freshness
+  // Monitor data freshness (synchronized with 1-minute backend ingestion)
   useEffect(() => {
     if (!lastUpdated) return
 
@@ -113,18 +113,24 @@ export function DisasterDashboard() {
       const now = new Date()
       const timeDiff = now.getTime() - lastUpdated.getTime()
       const minutesDiff = timeDiff / (1000 * 60)
+      const secondsDiff = timeDiff / 1000
 
-      if (minutesDiff < 1) {
+      // Data freshness: synchronized with 1-minute refresh interval
+      if (secondsDiff < 70) {
+        // Fresh within 70 seconds (1 min + 10s buffer)
         setDataFreshness('fresh')
-      } else if (minutesDiff < 5) {
+      } else if (minutesDiff < 3) {
+        // Stale between 70 seconds and 3 minutes
         setDataFreshness('stale')
       } else {
+        // Outdated after 3 minutes
         setDataFreshness('outdated')
       }
     }
 
     updateFreshness()
-    const freshnessInterval = setInterval(updateFreshness, 10000) // Check every 10 seconds
+    // Check freshness every 5 seconds for accurate display
+    const freshnessInterval = setInterval(updateFreshness, 5000)
 
     return () => clearInterval(freshnessInterval)
   }, [lastUpdated])

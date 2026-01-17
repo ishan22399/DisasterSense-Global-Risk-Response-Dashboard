@@ -115,11 +115,11 @@ async def shutdown_event():
 async def scheduled_data_ingestion():
     """
     Background job: Fetch data from all sources and process.
-    Runs every 10 minutes.
+    Runs every 1 minute for real-time sync.
     """
     global last_ingestion_time
     
-    logger.info("=== Starting scheduled data ingestion ===")
+    logger.info("=== Starting scheduled data ingestion (1-minute interval) ===")
     start_time = datetime.utcnow()
     
     stats = {
@@ -245,9 +245,9 @@ async def scheduled_data_ingestion():
 async def scheduled_expiry_check():
     """
     Background job: Check for events that should be expired.
-    Runs every 30 minutes.
+    Runs every 5 minutes (faster than original 30-minute interval).
     """
-    logger.info("=== Starting scheduled expiry check ===")
+    logger.info("=== Starting scheduled expiry check (5-minute interval) ===")
     
     try:
         # Get all active events
@@ -331,7 +331,8 @@ async def get_disasters(
     """
     Get disaster events with optional filtering.
     
-    Default: Returns active events from last 30 days
+    Real-time sync: Returns active events updated every 1 minute
+    Default: Last 7 days of events, up to 50 records
     """
     # Build query
     query = {}
