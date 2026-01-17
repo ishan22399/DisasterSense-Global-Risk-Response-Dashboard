@@ -28,14 +28,26 @@ class DataIngestionService:
         self.openweather_key = os.getenv('OPENWEATHER_API_KEY')
         self.aqicn_key = os.getenv('AQICN_API_KEY')
         self.news_api_key = os.getenv('NEWS_API_KEY')
+        self.youtube_api_key = os.getenv('YOUTUBE_API_KEY')
         
         # API endpoints
         self.usgs_endpoint = "https://earthquake.usgs.gov/fdsnws/event/1/query"
         self.nasa_endpoint = "https://eonet.gsfc.nasa.gov/api/v3/events"
+        self.gdacs_endpoint = "https://www.gdacs.org/api/v1/crises"
+        self.reliefweb_endpoint = "https://reliefweb.int/api/v1/disasters"
     
     def fetch_all_sources(self) -> List[DisasterEventCreate]:
         """
-        Fetch data from all available sources.
+        Fetch data from all available sources:
+        - USGS Earthquakes (free)
+        - NASA EONET (free)
+        - GDACS Crisis Alerts (free)
+        - ReliefWeb Disasters (free)
+        - OpenWeatherMap Alerts (free tier)
+        - AQICN Air Quality (free tier)
+        - NewsAPI Articles (free tier)
+        - YouTube Videos (free tier with API key)
+        - Web scraped news
         
         Returns:
             List of DisasterEventCreate objects
@@ -58,6 +70,20 @@ class DataIngestionService:
             logger.info(f"Fetched {len(nasa_events)} events from NASA EONET")
         except Exception as e:
             logger.error(f"NASA EONET fetch failed: {e}")
+        
+        try:
+            gdacs_events = self.fetch_gdacs_alerts()
+            all_events.extend(gdacs_events)
+            logger.info(f"Fetched {len(gdacs_events)} events from GDACS")
+        except Exception as e:
+            logger.error(f"GDACS fetch failed: {e}")
+        
+        try:
+            reliefweb_events = self.fetch_reliefweb_disasters()
+            all_events.extend(reliefweb_events)
+            logger.info(f"Fetched {len(reliefweb_events)} events from ReliefWeb")
+        except Exception as e:
+            logger.error(f"ReliefWeb fetch failed: {e}")
         
         if self.openweather_key:
             try:
@@ -393,3 +419,335 @@ class DataIngestionService:
                 continue
         
         return aqi_data
+    
+    def fetch_gdacs_alerts(self) -> List[DisasterEventCreate]:
+        """
+        Fetch global disaster alerts from GDACS (Global Disaster Alert and Coordination System).
+        
+        Returns:
+            List of DisasterEventCreate objects from GDACS API
+        """
+        events = []
+        try:
+            url = "https://www.gdacs.org/api/v1/crises"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            for crisis in data.get('data', []):
+                try:
+                    # Extract crisis information
+                    crisis_type = crisis.get('type', 'OTHER').upper()
+                    name = crisis.get('name', 'Unknown Crisis')
+                    
+                    # Map GDACS crisis types to our DisasterType enum
+                    type_mapping = {
+                        'EARTHQUAKE': 'EARTHQUAKE',
+                        'DROUGHT': 'DROUGHT',
+                        'FLOOD': 'FLOOD',
+                        'WILDFIRE': 'WILDFIRE',
+                        'CYCLONE': 'CYCLONE',
+                        'TSUNAMI': 'TSUNAMI',
+                        'EPIDEMIC': 'EPIDEMIC'
+                    }
+                    
+                    disaster_type = type_mapping.get(crisis_type, 'OTHER')
+                    
+                    # Extract location
+                    lon = crisis.get('lon')
+                    lat = crisis.get('lat')
+                    
+                    if lon is None or lat is None:
+                        continue
+                    
+                    # Determine severity from alert level
+                    alert_level = crisis.get('alertlevel', 'Low').lower()
+                    if 'red' in alert_level:
+                        severity = 'CRITICAL'
+                    elif 'orange' in alert_level:
+                        severity = 'SEVERE'
+                    elif 'yellow' in alert_level:
+                        severity = 'MODERATE'
+                    else:
+                        severity = 'MINOR'
+                    
+                    # Extract affected population
+                    affected_population = crisis.get('populationaffected', None)
+                    if affected_population:
+                        description = f"{name}. Affected population: {affected_population}"
+                    else:
+                        description = name
+                    
+                    event = DisasterEventCreate(
+                        name=name,
+                        description=description,
+                        location={'lat': float(lat), 'lng': float(lon)},
+                        disaster_type=disaster_type,
+                        severity=severity,
+                        source='GDACS',
+                        timestamp=datetime.utcnow(),
+                        affected_population=affected_population
+                    )
+                    events.append(event)
+                
+                except Exception as e:
+                    logger.warning(f"Error processing GDACS crisis {crisis.get('id')}: {e}")
+                    continue
+            
+            logger.info(f"Successfully fetched {len(events)} events from GDACS")
+        
+        except Exception as e:
+            logger.error(f"Error fetching GDACS alerts: {e}")
+        
+        return events
+    
+    def fetch_reliefweb_disasters(self) -> List[DisasterEventCreate]:
+        """
+        Fetch disaster reports from ReliefWeb API (UN OCHA).
+        
+        Returns:
+            List of DisasterEventCreate objects from ReliefWeb
+        """
+        events = []
+        try:
+            url = "https://reliefweb.int/api/v1/disasters"
+            params = {
+                'filter[status]': 'ongoing',
+                'limit': 50,
+                'sort[]': '-date.created'
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            for disaster in data.get('data', []):
+                try:
+                    fields = disaster.get('fields', {})
+                    
+                    name = fields.get('name', 'Unknown Disaster')
+                    disaster_type = fields.get('type', [{}])[0].get('name', 'OTHER').upper()
+                    
+                    # Map ReliefWeb types to our DisasterType
+                    type_mapping = {
+                        'EARTHQUAKE': 'EARTHQUAKE',
+                        'FLOOD': 'FLOOD',
+                        'DROUGHT': 'DROUGHT',
+                        'WILDFIRE': 'WILDFIRE',
+                        'STORM': 'CYCLONE',
+                        'CYCLONE': 'CYCLONE',
+                        'EPIDEMIC': 'EPIDEMIC',
+                        'DISEASE': 'EPIDEMIC',
+                        'VOLCANIC ERUPTION': 'VOLCANIC',
+                        'DISPLACEMENT': 'OTHER'
+                    }
+                    
+                    mapped_type = type_mapping.get(disaster_type, 'OTHER')
+                    
+                    # Extract location
+                    primary_country = fields.get('primary_country', [{}])[0]
+                    location_name = primary_country.get('name', 'Unknown')
+                    
+                    # Get coordinates if available
+                    location_obj = primary_country.get('location', {})
+                    lat = location_obj.get('lat')
+                    lon = location_obj.get('lon')
+                    
+                    if lat is None or lon is None:
+                        # Use default coordinates for country if specific coordinates unavailable
+                        lat = primary_country.get('latitude', 0)
+                        lon = primary_country.get('longitude', 0)
+                    
+                    # Determine severity from affected population
+                    affected_population = fields.get('affected_population')
+                    if affected_population and isinstance(affected_population, (int, float)):
+                        if affected_population > 1000000:
+                            severity = 'CRITICAL'
+                        elif affected_population > 100000:
+                            severity = 'SEVERE'
+                        elif affected_population > 10000:
+                            severity = 'MODERATE'
+                        else:
+                            severity = 'MINOR'
+                    else:
+                        severity = 'MODERATE'
+                    
+                    description = fields.get('description', name)[:500]
+                    
+                    event = DisasterEventCreate(
+                        name=name,
+                        description=description,
+                        location={'lat': float(lat), 'lng': float(lon)},
+                        disaster_type=mapped_type,
+                        severity=severity,
+                        source='ReliefWeb',
+                        timestamp=datetime.utcnow(),
+                        affected_population=affected_population
+                    )
+                    events.append(event)
+                
+                except Exception as e:
+                    logger.warning(f"Error processing ReliefWeb disaster {disaster.get('id')}: {e}")
+                    continue
+            
+            logger.info(f"Successfully fetched {len(events)} events from ReliefWeb")
+        
+        except Exception as e:
+            logger.error(f"Error fetching ReliefWeb disasters: {e}")
+        
+        return events
+    
+    def fetch_news_scrape(self) -> List[Dict]:
+        """
+        Scrape disaster-related news from major news sources.
+        Note: Creates news article objects, not disaster events.
+        
+        Returns:
+            List of news article dictionaries
+        """
+        news_articles = []
+        
+        try:
+            from bs4 import BeautifulSoup
+        except ImportError:
+            logger.warning("BeautifulSoup not installed, skipping news scraping")
+            return news_articles
+        
+        # Target news sources with disaster sections
+        news_sources = [
+            {
+                'name': 'BBC News - Emergencies',
+                'url': 'https://www.bbc.com/news/emergencies',
+                'article_selector': 'h3, h2'
+            },
+            {
+                'name': 'Reuters - Disasters',
+                'url': 'https://www.reuters.com/world/crisis',
+                'article_selector': 'h3[data-testid]'
+            }
+        ]
+        
+        for source in news_sources:
+            try:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+                
+                response = requests.get(source['url'], headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Extract articles based on selector
+                articles = soup.select(source['article_selector'])[:10]  # Limit to 10 per source
+                
+                for article in articles:
+                    try:
+                        title = article.get_text(strip=True)[:200]
+                        
+                        # Find associated link
+                        link_elem = article.find_parent('a') or article.find('a')
+                        link = link_elem.get('href', '') if link_elem else ''
+                        
+                        if title and link:
+                            # Make absolute URL if relative
+                            if link.startswith('/'):
+                                link = source['url'].split('//', 1)[0] + '//' + source['url'].split('/', 3)[2] + link
+                            
+                            news_articles.append({
+                                'title': title,
+                                'url': link,
+                                'source': source['name'],
+                                'timestamp': datetime.utcnow(),
+                                'description': title
+                            })
+                    
+                    except Exception as e:
+                        logger.debug(f"Error parsing article from {source['name']}: {e}")
+                        continue
+                
+                logger.info(f"Scraped {len(articles)} articles from {source['name']}")
+            
+            except Exception as e:
+                logger.warning(f"Error scraping news from {source['name']}: {e}")
+                continue
+        
+        return news_articles
+    
+    def fetch_youtube_videos(self) -> List[Dict]:
+        """
+        Fetch disaster-related videos from YouTube.
+        Requires YOUTUBE_API_KEY environment variable.
+        
+        Returns:
+            List of video metadata dictionaries
+        """
+        videos = []
+        
+        if not self.youtube_api_key:
+            logger.debug("YouTube API key not configured, skipping video fetch")
+            return videos
+        
+        try:
+            from googleapiclient.discovery import build
+        except ImportError:
+            logger.warning("google-api-client not installed, skipping YouTube videos")
+            return videos
+        
+        try:
+            youtube = build('youtube', 'v3', developerKey=self.youtube_api_key)
+            
+            # Search for recent disaster videos
+            search_queries = [
+                'earthquake today',
+                'wildfire alert',
+                'flood warning',
+                'hurricane latest',
+                'volcanic eruption',
+                'disaster news'
+            ]
+            
+            for query in search_queries:
+                try:
+                    request = youtube.search().list(
+                        q=query,
+                        type='video',
+                        part='snippet',
+                        maxResults=5,
+                        order='date',
+                        relevanceLanguage='en'
+                    )
+                    response = request.execute()
+                    
+                    for item in response.get('items', []):
+                        try:
+                            snippet = item['snippet']
+                            video = {
+                                'title': snippet['title'][:200],
+                                'video_id': item['id']['videoId'],
+                                'channel': snippet['channelTitle'],
+                                'published_at': snippet['publishedAt'],
+                                'thumbnail': snippet['thumbnails'].get('medium', {}).get('url'),
+                                'description': snippet['description'][:500],
+                                'source': 'YouTube',
+                                'timestamp': datetime.utcnow(),
+                                'url': f"https://www.youtube.com/watch?v={item['id']['videoId']}"
+                            }
+                            videos.append(video)
+                        
+                        except Exception as e:
+                            logger.debug(f"Error processing YouTube video: {e}")
+                            continue
+                    
+                    logger.debug(f"Fetched {len(response.get('items', []))} videos for query: {query}")
+                
+                except Exception as e:
+                    logger.warning(f"Error searching YouTube for '{query}': {e}")
+                    continue
+            
+            logger.info(f"Successfully fetched {len(videos)} videos from YouTube")
+        
+        except Exception as e:
+            logger.error(f"Error fetching YouTube videos: {e}")
+        
+        return videos

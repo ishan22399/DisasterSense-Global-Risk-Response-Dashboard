@@ -17,3 +17,8 @@ APScheduler==3.11.2
 
 # CORS middleware (included with starlette/fastapi)
 starlette==0.37.2
+# Web scraping
+beautifulsoup4==4.12.3
+
+# YouTube API integration (optional)
+google-api-python-client==2.188.0
