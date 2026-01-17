@@ -75,30 +75,33 @@ async def startup_event():
     
     logger.info("Database indexes created")
     
-    # Start scheduler for background ingestion (every 10 minutes)
+    # Start scheduler for background ingestion (every 1 minute for real-time sync)
     scheduler.add_job(
         scheduled_data_ingestion,
-        trigger=IntervalTrigger(minutes=10),
+        trigger=IntervalTrigger(minutes=1),
         id='data_ingestion',
         name='Multi-source disaster data ingestion',
         replace_existing=True
     )
     
-    # Start scheduler for lifecycle expiry checks (every 30 minutes)
+    # Start scheduler for lifecycle expiry checks (every 5 minutes)
     scheduler.add_job(
         scheduled_expiry_check,
-        trigger=IntervalTrigger(minutes=30),
+        trigger=IntervalTrigger(minutes=5),
         id='expiry_check',
         name='Event lifecycle expiry check',
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("Background scheduler started (10-minute ingestion interval)")
+    logger.info("Background scheduler started (1-minute ingestion interval for real-time sync)")
     
-    # Run initial ingestion
-    asyncio.create_task(scheduled_data_ingestion())
-    logger.info("Initial data ingestion triggered")
+    # Run initial ingestion immediately
+    try:
+        await scheduled_data_ingestion()
+    except Exception as e:
+        logger.error(f"Initial ingestion failed: {e}")
+    logger.info("Initial data ingestion completed")
 
 
 @app.on_event("shutdown")
@@ -322,8 +325,8 @@ async def get_disasters(
     severity: Optional[str] = Query(None, description="Filter by severity"),
     disaster_type: Optional[str] = Query(None, description="Filter by disaster type"),
     source: Optional[str] = Query(None, description="Filter by data source"),
-    days: int = Query(30, description="Events from last N days"),
-    limit: int = Query(100, description="Maximum number of events to return")
+    days: int = Query(7, description="Events from last N days"),
+    limit: int = Query(50, description="Maximum number of events to return")
 ):
     """
     Get disaster events with optional filtering.

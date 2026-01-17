@@ -80,12 +80,12 @@ export const useDisasterData = () => {
     }
   }, [isMounted])
 
-  // Fetch data on component mount
+  // Fetch data on component mount and set up auto-refresh every 1 minute for real-time sync
   useEffect(() => {
     if (isMounted) {
       fetchDisasters()
-      // Set up auto-refresh every 5 minutes (match backend ingestion timing)
-      const interval = setInterval(fetchDisasters, 5 * 60 * 1000)
+      // Set up auto-refresh every 1 minute (match backend 1-minute ingestion interval)
+      const interval = setInterval(fetchDisasters, 60 * 1000)
       return () => clearInterval(interval)
     }
   }, [fetchDisasters, isMounted])
