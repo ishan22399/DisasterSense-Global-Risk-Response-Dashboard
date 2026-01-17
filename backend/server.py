@@ -154,14 +154,14 @@ async def scheduled_data_ingestion():
         for new_event_data in new_events:
             try:
                 # Validate event data
-                is_valid, errors = geo_validator.validate_event_data(new_event_data.dict())
+                is_valid, errors = geo_validator.validate_event_data(new_event_data.model_dump())
                 if not is_valid:
                     logger.warning(f"Invalid event data: {errors}")
                     stats['errors'].append(f"Validation failed: {errors[0] if errors else 'Unknown'}")
                     continue
                 
                 # Create DisasterEvent object
-                new_event = DisasterEvent(**new_event_data.dict())
+                new_event = DisasterEvent(**new_event_data.model_dump())
                 
                 # Check for duplicates
                 duplicate_of = geo_validator.find_duplicates(new_event, existing_events)
@@ -169,7 +169,7 @@ async def scheduled_data_ingestion():
                 if duplicate_of:
                     # Handle duplicate - update existing event
                     should_update, changed_fields = geo_validator.should_update_event(
-                        new_event.dict(), duplicate_of
+                        new_event.model_dump(), duplicate_of
                     )
                     
                     if should_update:
@@ -194,7 +194,7 @@ async def scheduled_data_ingestion():
                         # Save to database
                         await disasters_collection.replace_one(
                             {'id': duplicate_of.id},
-                            duplicate_of.dict()
+                            duplicate_of.model_dump()
                         )
                         
                         stats['events_updated'] += 1
@@ -216,7 +216,7 @@ async def scheduled_data_ingestion():
                     )
                     
                     # Save to database
-                    await disasters_collection.insert_one(new_event.dict())
+                    await disasters_collection.insert_one(new_event.model_dump())
                     existing_events.append(new_event)  # Add to list for future dedup checks
                     
                     stats['events_created'] += 1
@@ -272,7 +272,7 @@ async def scheduled_expiry_check():
         for event in expired_events:
             await disasters_collection.replace_one(
                 {'id': event.id},
-                event.dict()
+                event.model_dump()
             )
         
         logger.info(f"=== Expiry check complete: {len(expired_events)} events expired ===")
