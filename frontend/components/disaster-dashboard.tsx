@@ -56,7 +56,7 @@ export function DisasterDashboard() {
   const [refreshInterval, setRefreshInterval] = useState(60) // Changed from 30s to 60s (1 minute)
   const [lastAutoRefresh, setLastAutoRefresh] = useState<Date>(new Date())
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected')
-  const [dataFreshness, setDataFreshness] = useState<'fresh' | 'stale' | 'outdated'>('fresh')
+  const [dataFreshness, setDataFreshness] = useState<'live' | 'stale' | 'outdated'>('live')
   const { disasters, isLoading, error, lastUpdated, apiStatus, refetch } = useDisasterData()
 
   // Prevent hydration mismatch by only rendering after mount
@@ -116,8 +116,8 @@ export function DisasterDashboard() {
 
       // Data freshness: Backend syncs every 1 minute continuously
       if (secondsDiff < 90) {
-        // Fresh within 90 seconds (1 min 30s buffer for network)
-        setDataFreshness('fresh')
+        // Live within 90 seconds (1 min 30s buffer for network)
+        setDataFreshness('live')
       } else if (secondsDiff < 180) {
         // Stale between 90 seconds and 3 minutes
         setDataFreshness('stale')
@@ -223,12 +223,12 @@ export function DisasterDashboard() {
   // Get data freshness indicator
   const getDataFreshnessIndicator = () => {
     switch (dataFreshness) {
-      case 'fresh':
-        return { color: 'bg-green-500', text: 'Fresh' }
+      case 'live':
+        return { color: 'bg-green-500', text: 'Live' }
       case 'stale':
         return { color: 'bg-blue-500', text: 'Recent' }
       case 'outdated':
-        // Treat outdated as recent to always show fresh data
+        // Treat outdated as recent to always show live data
         return { color: 'bg-blue-500', text: 'Recent' }
       default:
         return { color: 'bg-blue-500', text: 'Recent' }
@@ -416,7 +416,7 @@ export function DisasterDashboard() {
                               🔔 Live Notifications
                             </h3>
                             <div className="flex items-center space-x-2">
-                              <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'fresh' ? 'animate-pulse' : ''}`}></div>
+                              <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'live' ? 'animate-pulse' : ''}`}></div>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -957,7 +957,7 @@ export function DisasterDashboard() {
                     <CardDescription>Real-time statistical breakdown of current disasters</CardDescription>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'fresh' ? 'animate-pulse' : ''}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'live' ? 'animate-pulse' : ''}`}></div>
                     <span className="text-xs text-gray-500">Live data</span>
                   </div>
                 </div>
