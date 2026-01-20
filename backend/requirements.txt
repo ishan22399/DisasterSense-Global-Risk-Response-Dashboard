@@ -1,0 +1,27 @@
+# Core FastAPI dependencies
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+pydantic==2.12.5
+python-dotenv==1.2.1
+python-multipart==0.0.21
+
+# Database
+motor==3.3.1
+pymongo==4.5.0
+
+# HTTP requests
+requests==2.32.5
+
+# Async scheduler for background tasks
+APScheduler==3.11.2
+
+# CORS middleware (included with starlette/fastapi)
+starlette==0.37.2
+# Web scraping
+beautifulsoup4==4.12.3
+
+# YouTube API integration (optional)
+google-api-python-client==2.188.0
+
+# Production server
+gunicorn==21.2.0
