@@ -149,7 +149,7 @@ pip install -r backend/requirements.txt
 
 **Start Command:**
 ```bash
-gunicorn server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+gunicorn server:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
 ```
 
 **Environment Variables:** Set all API keys in Render dashboard as Secret variables
