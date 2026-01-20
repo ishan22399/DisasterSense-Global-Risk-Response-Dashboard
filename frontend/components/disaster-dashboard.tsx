@@ -330,7 +330,7 @@ export function DisasterDashboard() {
               {/* Status & Data Freshness - Hidden on mobile, shown in notification panel */}
               <div className="hidden md:flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'fresh' ? 'animate-pulse' : ''}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${getDataFreshnessIndicator().color} ${dataFreshness === 'live' ? 'animate-pulse' : ''}`}></div>
                   <span className="text-sm font-medium status-text">{getDataFreshnessIndicator().text}</span>
                 </div>
                 {connectionStatus !== 'connected' && (
