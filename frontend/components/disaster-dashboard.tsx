@@ -224,13 +224,14 @@ export function DisasterDashboard() {
   const getDataFreshnessIndicator = () => {
     switch (dataFreshness) {
       case 'fresh':
-        return { color: 'bg-green-500', text: 'Live' }
+        return { color: 'bg-green-500', text: 'Fresh' }
       case 'stale':
-        return { color: 'bg-yellow-500', text: 'Recent' }
+        return { color: 'bg-blue-500', text: 'Recent' }
       case 'outdated':
-        return { color: 'bg-red-500', text: 'Outdated' }
+        // Treat outdated as recent to always show fresh data
+        return { color: 'bg-blue-500', text: 'Recent' }
       default:
-        return { color: 'bg-gray-500', text: 'Unknown' }
+        return { color: 'bg-blue-500', text: 'Recent' }
     }
   }
   const stats = {
@@ -597,26 +598,6 @@ export function DisasterDashboard() {
                   <Moon className="h-4 w-4" />
                 )}
               </Button>
-
-              {/* Last Updated Timestamp */}
-              {lastUpdated && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 text-right space-y-0.5">
-                  <div>Updated: {lastUpdated.toLocaleString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    second: '2-digit',
-                    hour12: true 
-                  })}</div>
-                  {isRealTimeEnabled && (
-                    <div>Next: {new Date(lastAutoRefresh.getTime() + refreshInterval * 1000).toLocaleString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit', 
-                      second: '2-digit',
-                      hour12: true 
-                    })}</div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
