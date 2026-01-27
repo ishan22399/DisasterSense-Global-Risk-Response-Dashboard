@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -89,6 +89,12 @@ async def root():
 async def root_health_check():
     """Quick health check for monitoring services like UptimeRobot"""
     return {"status": "ok", "service": "DisasterSense Backend"}
+
+
+@app.head("/health")
+async def health_head():
+    """HEAD endpoint for UptimeRobot compatibility (prevents 405 errors)"""
+    return Response(status_code=200)
 
 
 @app.on_event("startup")
