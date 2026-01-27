@@ -73,6 +73,24 @@ scheduler = AsyncIOScheduler()
 last_ingestion_time = None
 
 
+# ===== ROOT HEALTH CHECK ENDPOINTS (for UptimeRobot) =====
+
+@app.get("/")
+async def root():
+    """Root endpoint - confirms backend is running"""
+    return {
+        "message": "DisasterSense Global Risk & Response Monitoring Platform",
+        "version": "2.0.0",
+        "status": "running"
+    }
+
+
+@app.get("/health")
+async def root_health_check():
+    """Quick health check for monitoring services like UptimeRobot"""
+    return {"status": "ok", "service": "DisasterSense Backend"}
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize services and start background scheduler"""
